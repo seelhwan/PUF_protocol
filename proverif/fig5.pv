@@ -1,0 +1,106 @@
+(*—-defineXOR—-*)
+fun my_xor(bitstring, bitstring): bitstring.
+
+(*—-XORfunc—-*)
+reduc forall x: bitstring, y: bitstring; my_xor(my_xor(x, y), y) = x.
+
+(*—-definezero—-*)
+free zero: bitstring.
+
+(*—-concat—-*)
+fun concat(bitstring, bitstring): bitstring.
+fun first_concat(bitstring): bitstring.
+fun second_concat(bitstring): bitstring.
+reduc forall x: bitstring, y: bitstring; first(concat(x, y)) = x.
+reduc forall x: bitstring, y: bitstring; second(concat(x, y)) = y.
+
+(*—-hash—-*)
+fun h(bitstring): bitstring.
+
+(*—-fuzzy—-*)
+fun Gen_K(bitstring) : bitstring.  (* K *)
+fun Gen_hd(bitstring) : bitstring. (* hd *)
+fun Rep(bitstring, bitstring) : bitstring.
+
+(*—PUF-—-*)
+fun PUF(bitstring): bitstring.
+reduc forall x: bitstring; PUF1(x) = h(x). (* 동일한 Challenge에 대해 같은 응답을 제공 *)
+
+(*—SK-—-*)
+fun senc(bitstring, skey) : bitstring.
+reduc forall m: bitstring, k: skey; sdec(senc(m, k), k) = m.
+
+(*—-channels—-*)
+free publicChannel : channel.
+
+(*—-UserA—-*)
+free ID_a : bitstring.
+free PW_a : bitstring [ private ].
+free Bio_a : bitstring [ private ].
+
+(*—-UserB—-*)
+free ID_b : bitstring.
+free PW_b : bitstring [ private ].
+free Bio_b : bitstring [ private ].
+
+(*—-CA—-*)
+
+
+(*—-events—-*)
+event startUserA().
+event endUserA().
+event startCA().
+event endCA().
+event startPS_t().
+event endPS_t().
+
+(*—-UserA process—-*)
+let UserA = 
+	event startUserA();
+	new x_a : bitstring;
+	new r3 : bitstring;
+	new T3 : bitstring;
+	let W3 = h(concat(concat(concat(concat(A_a, avt_a), r3), x_a), T3)) in
+	let U5 = my_xor(my_xor(W3, C_t), C_a2) in
+	let U6 = my_xor(U5, h(concat(concat(P_a, C_t), T3))) in
+	let J2 = my_xor(U6, h(concat(concat(concat(concat(concat(concat(avt_a, avt_b), U5), P_a), P_b), T3)) in
+	let N3 = my_xor(concat(J2, A_a), h(concat(U5,T3))) in
+	let encrypted = senc(avt_b, U5, W3, P_a, T3) in
+	
+	out(publicChannel, encrypted);
+	event endUserA().
+
+(*—-PS_t process—-*)
+let PS_t = event startPS_t();
+	in(publicChannel, encrypted : bitstirng);
+	let decrypted = sdec(x, k) in;
+	
+	new r2 : bitstring;
+	new T2 : bitstring;
+	let W2 = h(concat(concat(concat(avt_a, U1), U3), T2)) in
+	let U3 = my_xor(my_xor(W2, P_a), A_a) in
+	let U4 = my_xor(U3, h(concat(concat(P_a, C_t), T2))) in
+	let SK = h(concat(concat(concat(avt_a, U1), U3), T2)) in
+	let W1 = h(concat(concat(concat(concat(A_a, avt_a), SK), U3), T2)) in
+	out(publicChannel, (N2, U4, T2));
+	event endPS_t().
+
+
+(*—-queries—-*)
+query attacker(PW_a).
+query attacker(x_a).
+query attacker(x_CA).
+
+query inj-event(startUserA())==> inj-event(endUserA()).
+query inj-event(endUserA())==> inj-event(startUserA()).
+query inj-event(startPS_t())==> inj-event(endPS_t()).
+query inj-event(endPS_t())==> inj-event(startPS_t()).
+
+(*—-process—-*)
+process 
+((!UserA) | (!PS_t))
+
+
+
+
+

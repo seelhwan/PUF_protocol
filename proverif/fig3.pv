@@ -1,0 +1,102 @@
+(*—-defineXOR—-*)
+fun my_xor(bitstring, bitstring): bitstring.
+
+(*—-XORfunc—-*)
+equation forall x: bitstring, y: bitstring; my_xor(my_xor(x, y), y) = x.
+
+(*—-definezero—-*)
+free zero: bitstring.
+
+(*—-concat—-*)
+fun concat(bitstring, bitstring): bitstring.
+fun first_concat(bitstring): bitstring.
+fun second_concat(bitstring): bitstring.
+reduc forall x: bitstring, y: bitstring; first(concat(x, y)) = x.
+reduc forall x: bitstring, y: bitstring; second(concat(x, y)) = y.
+
+(*—-hash—-*)
+fun h(bitstring): bitstring.
+
+(*—-fuzzy—-*)
+fun Gen_K(bitstring) : bitstring.  (* K *)
+fun Gen_hd(bitstring) : bitstring. (* hd *)
+fun Rep(bitstring, bitstring) : bitstring.
+
+(*—PUF-—-*)
+fun PUF(bitstring): bitstring.
+reduc forall x: bitstring; PUF1(x) = h(x). (* 동일한 Challenge에 대해 같은 응답을 제공 *)
+
+(*—-channels—-*)
+free publicChannel : channel.
+
+(*—-UserA—-*)
+free ID_a : bitstring.
+free ID_a_check : bitstring [ private ].
+free x_a : bitstring [ private ].
+free PW_a : bitstring [ private ].
+free PW_a_check : bitstring [ private ].
+free Bio_a : bitstring [ private ].
+free Bio_a_check : bitstring [ private ].
+free Bio_a_P : bitstring.
+free C_a2 : bitstring.
+free C_a3 : bitstring.
+
+
+
+(*—-PSt—-*)
+free x_t : bitstring [ private ].
+
+(*—-events—-*)
+event startUserA().
+event endUserA().
+event startPS_t().
+event endPS_t().
+
+(*—-UserA process—-*)
+let UserA = 
+	event startUserA();
+	let ID_a_check = ID_a in
+	let PW_a_check = PW_a in 
+	let Bio_a_check = Bio_a in
+	let Bio_a_S = Rep(Bio_a_check,  Bio_a_P) in
+	let A_a = h(concat(ID_a_check, Bio_a_S)) in
+	let B_a = h(concat(PW_a_check, Bio_a_S)) in
+	let P_a = PUF(x_a) in
+	let C_a = my_xor(my_xor(C_a2, A_a), B_a) in
+	let computed_C_a3 = h(concat(concat(concat(P_a, A_a), B_a), C_a)) in
+	out(publicChannel, (A_a, B_a, P_a));
+
+	event endUserA().
+
+(*—-PS_t process—-*)
+let PS_t = event startPS_t();
+	in(publicChannel, (A_a : bitstring, B_a : bitstring, P_a : bitstring));
+	new x_t : bitstring;
+	new c : bitstring;
+	let P_t = PUF(x_t) in
+	let C_t = h(concat(concat(A_a, x_t), c)) in
+	let C_t2 = my_xor(my_xor(C_t, A_a), B_a) in
+	let C_t3 = h(concat(concat(concat(P_a, A_a), B_a), C_t)) in
+	out(publicChannel, (C_t2, C_t3));	
+
+	event endPS_t().
+
+
+(*—-queries—-*)
+query attacker(PW_a).
+query attacker(x_a).
+query attacker(x_t).
+
+query inj-event(startUserA())==> inj-event(endUserA()).
+query inj-event(endUserA())==> inj-event(startUserA()).
+query inj-event(startPS_t())==> inj-event(endPS_t()).
+query inj-event(endPS_t())==> inj-event(startPS_t()).
+
+(*—-process—-*)
+process 
+((!UserA) | (!PS_t))
+
+
+
+
+

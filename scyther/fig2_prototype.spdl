@@ -1,0 +1,90 @@
+hashfunction h,xor,PUF;
+
+protocol A (UserA, CA,PS)
+{
+   role UserA
+   {
+    fresh IDa, PWa, BIOa,delta,tau,avta,r1,T1,xa:Nonce;
+    var Ca2,Ct,xt,C,xCA,c:Nonce;
+    var N2,U4,T2:Ticket;
+    macro Aa=h(IDa,xa,delta);
+    macro Ba=h(PWa,delta);
+    macro Pa=PUF(xa); //reg_1
+
+    macro W1=h(Aa,avta,r1,xa,T1);
+    macro U1=xor(W1,Ct,Ca2);
+    macro U2=xor(U1,h(Pa,Ct,T1));
+    macro J1=xor(U1,h(Aa,avta,U2,T1));
+    macro N1=xor((Aa,avta,J1),h(U1,T1));
+
+    macro U3'=xor(U4,h(Pa,Ct,T2));
+    macro SK'=h(avta,U1,U3',T1);
+    macro N2'=h(Aa,avta,SK',U3',T2);
+
+
+    recv_!2(CA,UserA,{Ca2}k(CA,UserA));
+    recv_!4(PS,UserA,{Ct}k(PS,UserA));
+    send_7(UserA,PS,N1,U2,T1); //auth_1
+    recv_8(PS,UserA,N2,U4,T2); //auth_2
+
+    claim(UserA,Weakagree);
+    claim(UserA, Alive);
+    claim(UserA, Nisynch);
+    claim(UserA, Niagree);
+    claim(UserA, Secret, SK');
+    claim(UserA,Secret,N2');
+    claim(UserA,Secret,r1);
+
+
+    
+    }
+   role CA 
+   {
+   fresh Ca2,xCA,c:Nonce;
+   var Aa,Ba,Pa:Nonce; 
+   var IDa,PWa,BIOa,avta,delta,xa:Nonce;
+   
+   macro Ca2=xor(Ba,h(Aa,xCA,c),Aa);
+
+   recv_!1(UserA,CA,{Aa,Ba,Pa}k(UserA,CA));
+   
+    claim(CA, Alive);
+    claim(CA, Nisynch);
+    claim(CA, Niagree);
+    claim(CA,Secret,c);
+   
+
+   }
+   role PS
+   {
+   fresh Ct,xt,C:Nonce;
+   fresh r2,T2:Nonce;
+   var IDa,PWa,BIOa,avta,delta,xa,r1,T1:Nonce;
+   var Aa,Ba,Pa,c,xCA,Ca2:Nonce;
+   var N1,U2,T1:Ticket;
+
+   macro Ct=h(Aa,xt,C);
+   
+   macro W2=h(Aa,avta,r2,xt,T2);
+   macro U3=xor(W2,Pa,Aa);
+   macro U4=xor(U3,h(Pa,Ct,T2));
+   macro SK=h(avta,U1,U3,T1);
+   macro N2=h(Aa,avta,SK,U3,T2);
+   
+   recv_!3(UserA,PS,{Aa,Ba,Pa}k(UserA,PS));
+   recv_!5(UserA,PS,{avta}k(UserA,PS));
+   recv_!6(CA,PS,{Ca2}k(CA,PS));// this
+   recv_7(UserA,PS,N1,U2,T1); //auth_1
+   send_8(PS,UserA,N2,U4,T2); //auth_2
+
+   claim(PS,Weakagree);
+   claim(PS, Alive);
+   claim(PS, Nisynch);
+   claim(PS, Niagree);
+   claim(PS, Secret, SK);
+   claim(PS,Secret,r2);
+
+    } 
+
+}
+

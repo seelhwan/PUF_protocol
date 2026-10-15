@@ -1,0 +1,115 @@
+hashfunction h,xor,PUF;
+
+protocol B (UserA, CA,PS,UserB)
+{
+   role UserA
+   {
+    fresh IDa, PWa, BIOa,delta,tau,avta,r3,T3,xa:Nonce;
+    var Ca2,Ct,xt,C,xCA,c:Nonce;
+    var Pb,avtb,xb,Ab,Cb2:Nonce;
+    var U8,N4,Pb,Ab,T4:Ticket;
+
+    macro Aa=h(IDa,xa,delta);
+    macro Ba=h(PWa,delta);
+    macro Pa=PUF(xa); //reg_1
+
+    macro W3=h(Aa,avta,r3,xa,T3);
+    macro U5=xor(W3,Ct,Ca2);
+    macro U6=xor(U5,h(Pa,Ct,T3));
+    macro J2=xor(U6,h(avta,avtb,U5,Pa,Pb,T3));
+    macro N3=xor((Aa,J2),h(U5,T3));
+
+    macro U7'=xor(U8,h(Pb,Ct,T4));
+    macro J3'=xor(U8,h(avta,avtb,U7',Pa,Pb,T4));
+
+
+    recv_!2(CA,UserA,{Ca2}k(CA,UserA));
+    recv_!4(PS,UserA,{Ct}k(PS,UserA));
+    recv_!7(UserB,UserA,{Pb,avtb,Ab,Pb,Cb2}k(UserB,UserA));
+    send_!13(UserA, PS, {avtb,U6,N3,Pa,T3}k(UserA,PS));//auth_1
+    recv_!14(PS,UserA,{U8,N4,Pb,Ab,T4}k(PS,UserA));
+
+    claim(UserA,Weakagree);
+    claim(UserA, Alive);
+    claim(UserA, Nisynch);
+    claim(UserA, Niagree);
+    claim(UserA,Secret,J3');
+    claim(UserA,Secret,r3);
+
+    
+    }
+   role CA 
+   {
+   fresh xCA,c:Nonce;
+   var Aa,Ba,Pa:Nonce; 
+   var IDa,PWa,BIOa,avta,delta,xa:Nonce;
+   
+   macro Ca2=xor(Ba,h(Aa,xCA,c),Aa);
+
+   recv_!1(UserA,CA,{Aa,Ba,Pa}k(UserA,CA));
+
+   claim(CA,Weakagree);
+   claim(CA, Alive);
+   claim(CA, Nisynch);
+   claim(CA, Niagree);
+
+   }
+   role PS
+   {
+   fresh Ct,xt,C:Nonce;
+   var IDa,PWa,BIOa,avta,delta,xa,r1,T1:Nonce;
+   var Aa,Ba,Pa,c,xCA,Ca2,r3:Nonce;
+   var Pb,avtb,xb,Ab,Cb2:Nonce;
+   var avtb,U6,N3,Pa,T3:Ticket;
+   var avta,U8,N4,Pb,T4:Ticket;
+
+   macro Ct=h(Aa,xt,C);
+      
+   recv_!3(UserA,PS,{Aa,Ba,Pa}k(UserA,PS));
+   recv_!5(UserA,PS,{avta}k(UserA,PS));
+   recv_!6(CA,PS,{Ca2}k(CA,PS));
+   recv_!8(UserB,PS,{Pb,avtb,Ab,Pb,Cb2}k(UserB,PS));
+
+
+   claim(PS,Weakagree);
+   claim(PS, Alive);
+   claim(PS, Nisynch);
+   claim(PS, Niagree);
+   
+
+
+
+    } 
+    role UserB
+   {
+    fresh Ab,Pb,Cb2,avtb,xb,r4,T4:Nonce;
+    var U6,N3,Pa,Aa,T3,r3:Nonce;
+    var IDa,PWa,BIOa,avta,delta,xa,r1,T1:Nonce;
+    var Aa,Ba,Pa,c,xCA,Ca2,r3,Ct,Ca2,C,xt,Aa,Ba,Pa,avta:Nonce;
+
+    macro W4=h(Ab,avtb,r4,xb,T4);
+    macro U7=xor(W4,Cb2);
+    macro U8=xor(U7,h(Pa,Ct,T4));
+    macro J3=xor(U8,h(avta,avtb,U7,Pa,Pb,T4));
+    macro N4=xor((Ab,J3),h(U7,T4));
+
+    recv_!9(PS,UserB,{Ct}k(PS,UserB));
+    recv_!10(CA,UserB,{Ca2}k(CA,UserB));
+    recv_!11(UserA,UserB,{Aa,Ba,Pa}k(UserA,PS));
+    recv_!12(UserA,UserB,{avta}k(UserA,PS));
+    recv_!13(UserA, UserB, {avtb,U6,N3,Pa,T3}k(UserA,UserB));
+    send_!14(UserB,PS, {U8,N4,Pb,T4}k(UserB,PS));
+   
+
+    claim(UserB,Weakagree);
+    claim(UserB, Alive);
+    claim(UserB, Nisynch);
+    claim(UserB, Niagree);
+    claim(UserB,Secret,r4);
+    claim(UserB,Secret,J3);
+
+
+    
+   }
+
+}

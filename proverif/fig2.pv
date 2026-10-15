@@ -1,0 +1,93 @@
+(*—-defineXOR—-*)
+fun my_xor(bitstring, bitstring): bitstring.
+
+(*—-XORfunc—-*)
+equation forall x: bitstring, y: bitstring; my_xor(my_xor(x, y), y) = x.
+
+(*—-definezero—-*)
+free zero: bitstring.
+
+(*—-concat—-*)
+fun concat(bitstring, bitstring): bitstring.
+fun first_concat(bitstring): bitstring.
+fun second_concat(bitstring): bitstring.
+reduc forall x: bitstring, y: bitstring; first(concat(x, y)) = x.
+reduc forall x: bitstring, y: bitstring; second(concat(x, y)) = y.
+
+(*—-hash—-*)
+fun h(bitstring): bitstring.
+
+(*—-fuzzy—-*)
+fun Gen_K(bitstring) : bitstring.  (* K *)
+fun Gen_hd(bitstring) : bitstring. (* hd *)
+fun Rep(bitstring, bitstring) : bitstring.
+
+(*—PUF-—-*)
+fun PUF(bitstring): bitstring.
+reduc forall x: bitstring; PUF1(x) = h(x). (* 동일한 Challenge에 대해 같은 응답을 제공 *)
+
+(*—-channels—-*)
+free publicChannel : channel.
+
+(*—-UserA—-*)
+free ID_a : bitstring.
+free PW_a : bitstring [ private ].
+free Bio_a : bitstring [ private ].
+
+
+(*—-CA—-*)
+free x_CA : bitstring [ private ].
+
+(*—-events—-*)
+event startUserA().
+event endUserA().
+event startCA().
+event endCA().
+
+(*—-UserA process—-*)
+let UserA = 
+	event startUserA();
+	let Bio_a_P = Gen_K(Bio_a) in
+	let Bio_a_S = Gen_hd(Bio_a) in
+	new x_a : bitstring;
+	let A_a = h(concat(ID_a, Bio_a_S)) in
+	let B_a = h(concat(PW_a, Bio_a_S)) in
+	let P_a = PUF(x_a) in
+	out(publicChannel, (A_a, B_a, P_a));
+
+	in(publicChannel, (C_a2 : bitstring, C_a3 : bitstring));
+	let C_a = my_xor(my_xor(C_a2, A_a), B_a) in
+	let computed_C_a3 = h(concat(concat(concat(P_a, A_a), B_a), C_a)) in
+	if computed_C_a3 = C_a3 then
+		event endUserA()
+	else
+		0.
+
+(*—-CA process—-*)
+let CA = event startCA();
+	in(publicChannel, (A_a : bitstring, B_a : bitstring, P_a : bitstring));
+	new c : bitstring;
+	let P_CA = PUF(x_CA) in
+	let C_a = h(concat(concat(A_a, x_CA), c)) in
+	let D_a = my_xor(B_a, C_a) in
+	let C_a2 = my_xor(my_xor(C_a, A_a), B_a) in
+	let C_a3 = h(concat(concat(concat(P_a, A_a), B_a), C_a)) in
+	out(publicChannel, (C_a2, C_a3));
+	event endCA().
+
+(*—-queries—-*)
+query attacker(PW_a).
+query attacker(Bio_a).
+query attacker(x_CA).
+
+query inj-event(endUserA())==> inj-event(startUserA()).
+query inj-event(endCA())==> inj-event(startCA()).
+
+(*—-process—-*)
+process 
+((!UserA) | (!CA))
+
+
+
+
+
